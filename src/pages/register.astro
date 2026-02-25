@@ -1,15 +1,43 @@
 ---
 import Layout from "../layouts/Layout.astro";
+import { actions, isInputError } from "astro:actions";
+
+const result = Astro.getActionResult(actions.auth.register);
+
+if (result && !result.error) {
+  return Astro.redirect("/signin");
+}
+
+const inputErrors = isInputError(result?.error) ? result.error.fields : {};
 ---
 
 <Layout title="Register">
   <h1>Register</h1>
   <p>Already have an account? <a href="/signin">Sign in</a></p>
-  <form action="/api/auth/register" method="post">
+
+  {
+    result?.error && !isInputError(result.error) && (
+      <p class="error">{result.error.message}</p>
+    )
+  }
+
+  <form method="POST" action={actions.auth.register}>
     <label for="email">Email</label>
     <input type="email" name="email" id="email" />
+    {
+      inputErrors.email && (
+        <p class="field-error">{inputErrors.email.join(", ")}</p>
+      )
+    }
+
     <label for="password">Password</label>
     <input type="password" name="password" id="password" />
+    {
+      inputErrors.password && (
+        <p class="field-error">{inputErrors.password.join(", ")}</p>
+      )
+    }
+
     <button type="submit">Register</button>
   </form>
 </Layout>

@@ -1,12 +1,18 @@
 ---
 import Layout from "../layouts/Layout.astro";
+import { actions } from "astro:actions";
+
 const { email, role } = Astro.locals;
+const result = Astro.getActionResult(actions.auth.signout);
+if (result && !result.error) {
+  return Astro.redirect("/signin");
+}
 ---
 
 <Layout title="Admin Panel">
   <h1>Admin Panel</h1>
   <p>Welcome {email} — Role: {role}</p>
-  <form method="post" action="/api/auth/signout">
+  <form method="POST" action={actions.auth.signout}>
     <button type="submit">Sign out</button>
   </form>
 </Layout>

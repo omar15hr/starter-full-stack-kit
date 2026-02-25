@@ -1,5 +1,6 @@
 import { getSecret } from "astro:env/server";
 import { defineMiddleware } from "astro:middleware";
+import { getActionContext } from "astro:actions";
 import { createClient } from "@supabase/supabase-js";
 
 const protectedRoutes = ["/dashboard", "/admin"];
@@ -31,6 +32,11 @@ export const onRequest = defineMiddleware(async (context, next) => {
   if (authRoutes.includes(context.url.pathname) && isLoggedIn) {
     return context.redirect("/dashboard");
   }
+
+  const { action } = getActionContext(context);
+  if (action && !action.name.startsWith("auth") && !isLoggedIn) {
+    return new Response("Forbidden", { status: 403 });
+  }
   if (isProtectedRoute && isLoggedIn) {
     const { data: sessionData, error: sessionError } =
       await supabase.auth.setSession({
@@ -42,6 +48,27 @@ export const onRequest = defineMiddleware(async (context, next) => {
       context.cookies.delete("sb-access-token", { path: "/" });
       context.cookies.delete("sb-refresh-token", { path: "/" });
       return context.redirect("/signin");
+    }
+
+    if (sessionData.session) {
+      context.cookies.set("sb-access-token", sessionData.session.access_token, {
+        path: "/",
+        httpOnly: true,
+        secure: true,
+        sameSite: "lax",
+        maxAge: 60 * 60 * 24 * 7,
+      });
+      context.cookies.set(
+        "sb-refresh-token",
+        sessionData.session.refresh_token,
+        {
+          path: "/",
+          httpOnly: true,
+          secure: true,
+          sameSite: "lax",
+          maxAge: 60 * 60 * 24 * 30,
+        },
+      );
     }
 
     const { data: profile } = await supabase
