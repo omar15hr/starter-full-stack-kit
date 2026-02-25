@@ -1,0 +1,12 @@
+---
+import Layout from "../layouts/Layout.astro";
+const { email, role } = Astro.locals;
+---
+
+<Layout title="Admin Panel">
+  <h1>Admin Panel</h1>
+  <p>Welcome {email} — Role: {role}</p>
+  <form action="/api/auth/signout">
+    <button type="submit">Sign out</button>
+  </form>
+</Layout>
