@@ -1,5 +1,6 @@
+import { createClient } from "@supabase/supabase-js";
 import type { APIRoute } from "astro";
-import { supabase } from "../../../lib/supabase";
+import { getSecret } from "astro:env/server";
 
 export const POST: APIRoute = async ({ request, redirect }) => {
   const formData = await request.formData();
@@ -9,6 +10,11 @@ export const POST: APIRoute = async ({ request, redirect }) => {
   if (!email || !password) {
     return new Response("Email and password are required", { status: 400 });
   }
+
+  const supabase = createClient(
+    getSecret("SUPABASE_URL")!,
+    getSecret("SUPABASE_KEY")!,
+  );
 
   const { error } = await supabase.auth.signUp({
     email,

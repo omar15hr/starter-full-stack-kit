@@ -1,5 +1,6 @@
 import type { APIRoute } from "astro";
-import { supabase } from "../../../lib/supabase";
+import { getSecret } from "astro:env/server";
+import { createClient } from "@supabase/supabase-js";
 
 export const POST: APIRoute = async ({ request, cookies, redirect }) => {
   const formData = await request.formData();
@@ -9,6 +10,11 @@ export const POST: APIRoute = async ({ request, cookies, redirect }) => {
   if (!email || !password) {
     return new Response("Email and password are required", { status: 400 });
   }
+
+  const supabase = createClient(
+    getSecret("SUPABASE_URL")!,
+    getSecret("SUPABASE_KEY")!,
+  );
 
   const { data, error } = await supabase.auth.signInWithPassword({
     email,
@@ -20,11 +26,20 @@ export const POST: APIRoute = async ({ request, cookies, redirect }) => {
   }
 
   const { access_token, refresh_token } = data.session;
+
   cookies.set("sb-access-token", access_token, {
     path: "/",
+    httpOnly: true,
+    secure: true,
+    sameSite: "lax",
+    maxAge: 60 * 60 * 24 * 7, // 7 días
   });
   cookies.set("sb-refresh-token", refresh_token, {
     path: "/",
+    httpOnly: true,
+    secure: true,
+    sameSite: "lax",
+    maxAge: 60 * 60 * 24 * 30, // 30 días
   });
 
   const { data: profile } = await supabase

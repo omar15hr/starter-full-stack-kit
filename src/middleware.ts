@@ -1,24 +1,37 @@
+import { getSecret } from "astro:env/server";
 import { defineMiddleware } from "astro:middleware";
-import { supabase } from "./lib/supabase";
+import { createClient } from "@supabase/supabase-js";
 
 const protectedRoutes = ["/dashboard", "/admin"];
 const adminRoutes = ["/admin"];
 const authRoutes = ["/signin", "/register"];
 
 export const onRequest = defineMiddleware(async (context, next) => {
+  const supabase = createClient(
+    getSecret("SUPABASE_URL")!,
+    getSecret("SUPABASE_KEY")!,
+  );
+
   const accessToken = context.cookies.get("sb-access-token");
   const refreshToken = context.cookies.get("sb-refresh-token");
 
   const isLoggedIn = accessToken && refreshToken;
 
-  if (protectedRoutes.includes(context.url.pathname) && !isLoggedIn) {
+  const isProtectedRoute = protectedRoutes.some((route) =>
+    context.url.pathname.startsWith(route),
+  );
+  const isAdminRoute = adminRoutes.some((route) =>
+    context.url.pathname.startsWith(route),
+  );
+
+  if (isProtectedRoute && !isLoggedIn) {
     return context.redirect("/signin");
   }
 
   if (authRoutes.includes(context.url.pathname) && isLoggedIn) {
     return context.redirect("/dashboard");
   }
-  if (protectedRoutes.includes(context.url.pathname) && isLoggedIn) {
+  if (isProtectedRoute && isLoggedIn) {
     const { data: sessionData, error: sessionError } =
       await supabase.auth.setSession({
         access_token: accessToken.value,
@@ -39,7 +52,7 @@ export const onRequest = defineMiddleware(async (context, next) => {
 
     const userRole = profile?.role || "user";
 
-    if (adminRoutes.includes(context.url.pathname) && userRole !== "admin") {
+    if (isAdminRoute && userRole !== "admin") {
       return context.redirect("/dashboard");
     }
     context.locals.email = sessionData.user.email ?? "";
